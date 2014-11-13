@@ -53,12 +53,13 @@ public class NbsDiv extends Screen{
 		text2.setBounds(5, 140, 75, 20);
 		button2.setBounds(85, 140, 60, 20);
 		label3.setBounds(200, 40, 150, 20);
-		text3.setBounds(5, 140, 75, 20);
-		button3.setBounds(85, 140, 60, 20);
+		text3.setBounds(200, 60, 75, 20);
+		button3.setBounds(280, 60, 60, 20);
 		
 		Handler handler = new Handler();
 		button1.addActionListener(handler);
 		button2.addActionListener(handler);
+		button3.addActionListener(handler);
 		
 		
 		
