@@ -31,8 +31,8 @@ public class Handler implements ActionListener{
 			int x = Reference.currentNum - 1;
 			NbsDiv.stopTimer();
 			JOptionPane.showMessageDialog(null, "The smallest num with at least " + NbsDiv.text2.getText() + " divisors is " + x + " with " + Reference.maxDiv + ". It took " + NbsDiv.getTime());
+		}else if(e.getSource() == NbsDiv.button3){
+			Reference.incrementer = Integer.parseInt(NbsDiv.text3.getText());
 		}
 	}
-
-	
 }
