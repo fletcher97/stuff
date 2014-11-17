@@ -10,8 +10,4 @@ public class Screen extends JFrame{
 		setLayout(null);
 	}
 	
-	public static void addScreenContent(){
-		
-	}
-	
 }
