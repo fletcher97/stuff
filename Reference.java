@@ -13,7 +13,7 @@ public class Reference {
 	public static int height = 200;
 	public static int xPos = 350;
 	public static int yPos = 150;
-	public static boolean it1 = false;
+	public static boolean it1 = true;
 	
 	
 	public static int[] primes = {0,1,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,
