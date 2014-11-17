@@ -23,6 +23,10 @@ public class NbsDiv extends Screen{
 	static JLabel label3 = new JLabel("Set console int printer");
 	static JTextField text3 = new JTextField();
 	static JButton button3 = new JButton("Set");
+	static JLabel label4 = new JLabel("Count 1 and it self as");
+	static JLabel label41 = new JLabel("divisors");
+	static JTextField text4 = new JTextField();
+	static JButton button4 = new JButton("Set");
 	
 	public static void main(String[] args) {
 		
@@ -44,6 +48,10 @@ public class NbsDiv extends Screen{
 		screen.add(label3);
 		screen.add(text3);
 		screen.add(button3);
+		screen.add(label4);
+		screen.add(label41);
+		screen.add(text4);
+		screen.add(button4);
 		titleLabel.setBounds(Reference.width / 2 - 50, 3, 300, 20);
 		label1.setBounds(5, 40, 150, 20);
 		text1.setBounds(5, 60, 75, 20);
@@ -55,57 +63,16 @@ public class NbsDiv extends Screen{
 		label3.setBounds(200, 40, 150, 20);
 		text3.setBounds(200, 60, 75, 20);
 		button3.setBounds(280, 60, 60, 20);
+		label4.setBounds(200, 100, 150, 20);
+		label41.setBounds(200, 120, 150, 20);
+		text4.setBounds(200, 140, 75, 20);
+		button4.setBounds(280, 140, 60, 20);
 		
 		Handler handler = new Handler();
 		button1.addActionListener(handler);
 		button2.addActionListener(handler);
 		button3.addActionListener(handler);
-		
-		
-		
-		try{
-		Console cnsl1 = System.console();
-		if(cnsl1 != null){
-		PrintWriter out = cnsl1.writer();
-		
-		
-		startTimer();
-		int x = 500000;
-		out.println(x + " has " + nbsDiv(x) + " divisores.");
-		out.println();
-		for (int y = 0; y <= Reference.maxNum; y++){
-			out.println(y + " has " + nbsDiv(y) + " divisores.");
-		}
-		stopTimer();
-		out.println();
-		out.println(getTime());
-		startTimer();
-		out.println();
-		while(Reference.maxDiv < Reference.recDiv){
-			nbsDiv(Reference.currentNum);
-			if(Reference.currentNum % Reference.incrementer == 0){
-				out.println(Reference.currentNum);
-			}
-			out.println(Reference.currentNum + " has " + Reference.maxDiv + " divisores.");
-			Reference.currentNum++;
-		}
-		out.println(Reference.currentNum - 1 + " is divided by 100 num.");
-		out.println();
-		stopTimer();
-		out.println(getTime());
-		/**
-		for(int y = 0; y < Reference.primes.length; y++){
-			System.out.println(Reference.primes[y]);
-		}
-		*/
-		
-		cnsl1.wait();
-		}
-		}catch(Exception ex){
-			
-		}
-		
-		
+		button4.addActionListener(handler);
 	}
 	
 	public static void startTimer() {
@@ -117,7 +84,7 @@ public class NbsDiv extends Screen{
 	}
 
 	public static String getTime() {
-		return Long.toString((Reference.stopTime - Reference.startTime)/1000000000) + "s. or " + Long.toString(Reference.stopTime - Reference.startTime) + "nano s.";
+		return Long.toString((Reference.stopTime - Reference.startTime)/1000000000) + "s. or " + Long.toString(Reference.stopTime - Reference.startTime) + " nano s.";
 	}
 
 	public static int nbsDiv(int x){
@@ -129,7 +96,7 @@ public class NbsDiv extends Screen{
 				divisor++;
 			}
 			//System.out.println("First devisor: " + divisor);
-			if (x != divisor){
+			if (x != divisor && x != 1){
 				//System.out.println("x different then " + divisor);
 				divisorNb++;
 				int smallOppDevisor = x / divisor;
