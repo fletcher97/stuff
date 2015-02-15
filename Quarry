@@ -1,36 +1,38 @@
-xCoord, yCoord, zCoord = gps.locate()
+--pastebin get nJNQmMZq
+local xCoord, yCoord, zCoord = gps.locate()
 
-xQuarry = 999
-yQuarry = 150
-zQuarry = 999
+local xQuarry
+local yQuarry
+local zQuarry
 
-xHome = xCoord
-yHome = yCoord
-zHome = zCoord
+local xHome
+local yHome
+local zHome
 
-yTravel = 239
+local yTravel
 
-xProgress = 999
-yProgress = 150
-zProgress = 999
-oProgress = 1
+local xProgress
+local yProgress
+local zProgress
+local oProgress
 
-orientation = -1
-orientations = {"north","east","south","west"}
+local orientation
+local orientations = {"north","east","south","west"}
 
-xDiff = {0,1,0,-1}
-zDiff = {-1,0,1,0}
+local xDiff = {0,1,0,-1}
+local zDiff = {-1,0,1,0}
 
-lineLenght = 0
-working = 0
-lines = 0
+local lineLenght
+local working
+local nLines
+local qSize
 
-jobAvailable = true
-managerId = -1
+local jobAvailable = true
+local managerId = -1
 
-yMin = yCoord
+local yMin = yCoord
 
-id = -1
+local id = -1
 
 function save()
 	h = fs.open("config", "w")
@@ -39,9 +41,12 @@ function save()
 	h.writeLine(tostring(zHome))
 	h.writeLine(tostring(orientation))
 	h.writeLine(tostring(xQuarry))
-	h.writeLine(tostring(yProgress))
+	h.writeLine(tostring(yMin))
 	h.writeLine(tostring(zQuarry))
 	h.writeLine(tostring(working))
+	h.writeLine(tostring(qSize))
+	h.writeLine(tostring(lineLenght))
+	h.writeLine(tostring(nLines))
 	h.flush()
 	h.close()
 end
@@ -59,15 +64,42 @@ function load()
 	a = h.readLine()
 	xQuarry = tonumber(a)
 	a = h.readLine()
-	yProgress = tonumber(a)
+	yMin = tonumber(a)
 	a = h.readLine()
 	zQuarry = tonumber(a)
 	a = h.readLine()
 	working = tonumber(a)
+	a = h.readLine()
+	qSize = tonumber(a)
+	a = h.readLine()
+	lineLenght = tonumber(a)
+	a = h.readLine()
+	nLines = tonumber(a)
 	h.close()
 end
 
+function refuel()
+	if turtle.getFuelLevel() < 10000 then
+		rednet.open("right")
+		rednet.broadcast("Need fuel")
+		while id == -1 do
+			id, msg, dis = rednet.receive()
+		end
+		if msg == "yes" then
+			rednet.send(id, tostring(xCoord))
+			rednet.send(id, tostring(yCoord))
+			rednet.send(id, tostring(zCoord))
+			while turtle.getFuelLevel() < 30000 do
+				rednet.send(id, "More")
+				turtle.refuel()
+			end
+			rednet.send(id, "Done")
+		end
+	end
+end
+
 function inventoryFull()
+	local full = false
 	turtle.select(16)
 	full = turtle.getItemCount(16) > 0
 	turtle.select(1)
@@ -79,6 +111,7 @@ function left()
 	orientation = (orientation - 1) % 4
 	orientation = orientation + 1
 	turtle.turnLeft()
+	save()
 end
 
 function right()
@@ -86,6 +119,7 @@ function right()
 	orientation = (orientation + 1) % 4
 	orientation = orientation + 1
 	turtle.turnRight()
+	save()
 end
 
 function moveForward()
@@ -96,6 +130,7 @@ function moveForward()
 		turtle.dig()
 		moved = turtle.forward()
 	end
+	save()
 end
 
 function moveUp()
@@ -105,6 +140,7 @@ function moveUp()
 		turtle.digUp()
 		moved = turtle.up()
 	end
+	save()
 end
 
 function moveDown()
@@ -117,10 +153,15 @@ function moveDown()
 	if yMin > yCoord then
 		yMin = yCoord
 	end
+	save()
 end
 
 function setOrientation()
-	turtle.forward()
+	local moved = false
+	while not(moved) do
+		turtle.dig()
+		moved = turtle.forward()
+	end
 	xCur, yCur, zCur = gps.locate()
 	if xCur < xCoord then
 		orientation = 4
@@ -131,7 +172,30 @@ function setOrientation()
 	elseif zCur > zCoord then
 		orientation = 3
 	end
-	turtle.back()
+	right()
+	right()
+	moved = false
+	while not(moved) do
+		turtle.dig()
+		moved = turtle.forward()
+	end
+	left()
+	left()
+end
+
+function setThings()
+	xCoord, yCoord, zCoord = gps.locate()
+	xHome = xCoord
+	yHome = yCoord
+	zHome = zCoord
+	setOrientation()
+	yTravel = 239
+	yMin = yCoord
+end
+
+function setThingsNotLoaded()
+	xCoord, yCoord, zCoord = gps.locate()
+	yTravel = 239
 end
 
 function look(direction)
@@ -178,6 +242,7 @@ function returnItems()
 	yProgress = yCoord
 	zProgress = zCoord
 	oProgress = orientation
+	print("Returning items")
 	goto(xHome, yTravel, zHome)
 	goto(xHome, yHome, zHome)
 	for i = 1, 16 do
@@ -185,53 +250,94 @@ function returnItems()
 		turtle.dropDown()
 	end
 	turtle.select(1)
+	--refuel()
 	goto(xProgress, yTravel, zProgress)
 	goto(xProgress, yProgress, zProgress)
 	look(orientations[oProgress])
 end
 
 function digLine()
-	for i = 1, lineLenght-1 do
-	if inventoryFull() then
-		returnItems()
-	end
+	lineLenght = qSize - 2
+	while lineLenght ~= 0 do
+		if inventoryFull() then
+			returnItems()
+		end
 		moveForward()
+		lineLenght = lineLenght - 1
+		save()
 	end
+	--[[for i = 1, lineLenght-1 do
+		if inventoryFull() then
+			returnItems()
+		end
+		moveForward()
+		save()
+	end]]--
 end
 
 function digLayer()
-	for i = 1, lines do
+	nLines = qSize
+	while nLines ~= 1 do
 		digLine()
-		if i % 2 == 1 and i < lines then
+		if qSize % 2 == 1 and nLines > 2 then
+			if nLines % 2 == 1 then
+				left()
+				moveForward()
+				left()
+			else
+				right()
+				moveForward()
+				right()
+			end
+		elseif nLines > 2 then
+			if nLines % 2 == 1 then
+				right()
+				moveForward()
+				right()
+			else
+				left()
+				moveForward()
+				left()
+			end
+		end
+		nLines = nLines - 1
+	end
+	--[[for i = 1, nLines do
+		digLine()
+		if i % 2 == 1 and i < nLines then
 			left()
 			moveForward()
 			left()
-		elseif i < lines then
+		elseif i < nLines then
 			right()
 			moveForward()
 			right()
 		end
-	end
+	end]]--
+	print("goingt to dig next layer")
 	goto(xQuarry, yCoord, zQuarry)
 	look("north")
 	moveDown()
+	yProgress = yCoord
 end
 
 function digQuarry(xTarget, yTarget, zTarget)
 	xQuarry = xTarget
 	yQuarry = yTarget
 	zQuarry = zTarget
-	if inventoryFull then
+	if inventoryFull() then
 		returnItems()
 	end
 	goto(xQuarry, yTravel, zQuarry)
 	goto(xQuarry, yQuarry, zQuarry)
 	look("north")
+	yMin = yCoord
 	while yMin > 6 do
 		digLayer()
 	end
+	yProgress = 150
 	goto(xQuarry, yQuarry, zQuarry)
-	goto(xHome, yHome, zTravel)
+	goto(xHome, yTravel, zHome)
 	goto(xHome, yHome, zHome)
 	yMin = 999
 end
@@ -243,16 +349,21 @@ function getJob()
 			id, msg, dis = rednet.receive()
 		end
 		if msg == "yes" then
+			managerId = id
 			id, xQuarry, dis = rednet.receive()
 			id, yQuarry, dis = rednet.receive()
 			id, zQuarry, dis = rednet.receive()
-			id, qDist, dis = rednet.receive()
+			id, qSize, dis = rednet.receive()
 			rednet.send(id, "ok")
-			lineLenght = tonumber(qDist) - 1
-			lines = tonumber(qDist) - 1
+			qSize = tonumber(qSize)
+			lineLenght = qSize - 2
+			nLines = qSize - 1
 			working = 1
 			print("got job")
-			digQuarry(tonumber(xQuarry), tonumber(yQuarry), tonumber(zQuarry))
+			xQuarry = tonumber(xQuarry)
+			yQuarry = tonumber(yQuarry)
+			zQuarry = tonumber(zQuarry)
+			digQuarry(xQuarry, yQuarry, zQuarry)
 			working = 0
 		elseif msg == "no" then
 			jobAvailable = false
@@ -265,19 +376,23 @@ end
 rednet.open("right")
 if fs.exists("config") then
 	load()
+	setThingsNotLoaded()
 	print("Loaded!")
 else
+	setThings()
 	print("Not loaded")
 end
-if orientation == -1 then
-	setOrientation()
-	print("orientation set")
-else
-	print("Had orientation")
-end
 if working == 1 then
+	x = xQuarry
+	y = yMin
+	z = zQuarry
+	print("I have x: "..x.." y: "..y.." and z: "..z)
+	print("I'm at "..xCoord.." "..yCoord.." "..zCoord)
+	if inventoryFull() then
+		returnItems()
+	end
 	print("going to work")
-	digQuarry(xQuarry, yProgress, zQuary)
+	digQuarry(x, y, z)
 else
 	print("need a job")
 end
