@@ -1,0 +1,146 @@
+xCoord, yCoord, zCoord = gps.locate()
+
+xHome = xCoord
+yHome = yCoord
+zHome = zCoord
+
+orientation = -1
+orientations = {"north","east","south","west"}
+
+xDiff = {0,1,0,-1}
+zDiff = {-1,0,1,0}
+
+id = -1
+
+function save()
+	h = fs.open("config", "w")
+	h.writeLine(tostring(xHome))
+	h.writeLine(tostring(yHome))
+	h.writeLine(tostring(zHome))
+	h.flush()
+	h.close()
+end
+
+function load()
+	h = fs.open("config", "r")
+	a = h.readLine()
+	xHome = tonumber(a)
+	a = h.readLine()
+	yHome = tonumber(a)
+	a = h.readLine()
+	zHome = tonumber(a)
+	h.close()
+end
+
+function left()
+	orientation = orientation - 1
+	orientation = (orientation - 1) % 4
+	orientation = orientation + 1
+	turtle.turnLeft()
+end
+
+function right()
+	orientation = orientation - 1
+	orientation = (orientation + 1) % 4
+	orientation = orientation + 1
+	turtle.turnRight()
+end
+
+function moveForward()
+	xCoord = xCoord + xDiff[orientation]
+	zCoord = zCoord + zDiff[orientation]
+	moved = false
+	while not(moved) do
+		--turtle.dig()
+		moved = turtle.forward()
+	end
+end
+
+function moveUp()
+	yCoord = yCoord + 1
+	moved = false
+	while not(moved) do
+		--turtle.digUp()
+		moved = turtle.up()
+	end
+end
+
+function moveDown()
+	yCoord = yCoord - 1
+	moved = false
+	while not(moved) do
+		--turtle.digDown()
+		moved = turtle.down()
+	end
+	--if yMin > yCoord then
+	--	yMin = yCoord
+	--end
+end
+
+function look(direction)
+	while direction ~= orientations[orientation] do
+		right()
+	end
+end
+
+function goto(xTarget, yTarget, zTarget)
+	while yCoord < yTarget do
+		moveUp()
+	end
+	while yCoord > yTarget do
+		moveDown()
+	end
+	if xTarget < xCoord then
+		look("west")
+		while xTarget < xCoord do
+			moveForward()
+		end
+	end
+	if xTarget > xCoord then
+		look("east")
+		while xTarget > xCoord do
+			moveForward()
+		end
+	end
+	if zTarget > zCoord then
+		look("south")
+		while zTarget > zCoord do
+			moveForward()
+		end
+	end
+	if zTarget < zCoord then
+		look("north")
+		while zTarget < zCoord do
+			moveForward()
+		end
+	end
+end
+
+function refuel()
+	while id == -1 do
+		id, msg, dis = rednet.receive()
+	end
+	if msg = "Need fuel" then
+		rednet.send(id, "yes")
+		xTurtle = rednet.receive()
+		yTurtle = rednet.receive()
+		zTurtle = rednet.receive()
+		goto(xTurtle, yTurtle + 1, zTurtle)
+		turtle.selecte(1)
+		turtle.dropDown(16)
+		for i = 1, 16 do
+			id, msg, dis = rednet.receive()
+			if msg == "more" then
+				turtle.selecte(i)
+				while turtle.getItemCount() > 0 do
+					id, msg, dis = rednet.receive()
+					if msg == "more" then
+						turtle.dropDown(16)
+					end
+				end
+			end
+		end
+		goto(xHome, yHome + 1, zHome)
+		goto(xHome, yHome, zHome)
+	end
+end
