@@ -1,0 +1,111 @@
+xStart = -10
+zStart = -13
+
+yNorm = 237
+
+xEnd = 34
+zEnd = -64
+
+qDist = 11
+
+xNextJob = xStart
+zNextJob = zStart
+yNextJob = yNorm
+
+jobAvailable = true
+job = 1
+loaded = 0
+
+id = -1
+
+function saveQuarry()
+	h = fs.open("config", "w")
+	h.writeLine(tostring(xStart))
+	h.writeLine(tostring(zStart))
+	h.writeLine(tostring(xEnd))
+	h.writeLine(tostring(zEnd))
+	h.writeLine(tostring(yNorm))
+	h.writeLine(tostring(xNextJob))
+	h.writeLine(tostring(zNextJob))
+	h.writeLine(tostring(job))
+	h.flush()
+	print("saved")
+	h.close()
+end
+
+function load()
+	h = fs.open("config", "r")
+	a = h.readLine()
+	xStart = tonumber(a)
+	a = h.readLine()
+	zStart = tonumber(a)
+	a = h.readLine()
+	xEnd = tonumber(a)
+	a = h.readLine()
+	zEnd = tonumber(a)
+	a = h.readLine()
+	yNorm = tonumber(a)
+	a = h.readLine()
+	xNextJob = tonumber(a)
+	a = h.readLine()
+	zNextJob = tonumber(a)
+	a = h.readLine()
+	job = tonumber(a)
+	h.close()
+end
+
+function setNextJob()
+	xNextJob = xNextJob + qDist
+	if xNextJob > xEnd then
+		xNextJob = xStart
+		zNextJob = zNextJob - qDist
+		if zNextJob < zEnd then
+			jobAvailable = false
+			job = 0
+			print("no more jobs")
+		end
+	end
+	print("Next job X: "..xNextJob.." Z: "..zNextJob)
+	saveQuarry()
+end
+
+rednet.open("top")
+if fs.exists("config") then
+	load()
+	print("loaded")
+	loaded = 1
+end
+print("Next job X: "..xNextJob.." Z: "..zNextJob)
+if job == 1 then
+	while jobAvailable do
+		print("Job available")
+		while id == -1 do
+			print("waiting")
+			id, msg, dis = rednet.receive()
+		end
+		print("Turtle "..id.." is ready for work")
+		if msg == "miner" then
+			rednet.send(id, "yes")
+			rednet.send(id, tostring(xNextJob))
+			rednet.send(id, tostring(yNextJob))
+			rednet.send(id, tostring(zNextJob))
+			rednet.send(id, tostring(qDist))
+			print("Quarry coord sent")
+		end
+		while id == -1 do
+			id, msg, dis = rednet.receive()
+		end
+		if msg == "ok" then
+			print("turtle got coord")
+			setNextJob()
+		end
+		id = -1
+	end
+	fs.delete("config")
+end
+while true do
+	id, msg, dis = rednet.receive()
+	if msg == "miner" then
+		rednet.send(id, "no")
+	end
+end
