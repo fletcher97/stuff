@@ -1,0 +1,284 @@
+xCoord, yCoord, zCoord = gps.locate()
+
+xQuarry = 999
+yQuarry = 150
+zQuarry = 999
+
+xHome = xCoord
+yHome = yCoord
+zHome = zCoord
+
+yTravel = 239
+
+xProgress = 999
+yProgress = 150
+zProgress = 999
+oProgress = 1
+
+orientation = -1
+orientations = {"north","east","south","west"}
+
+xDiff = {0,1,0,-1}
+zDiff = {-1,0,1,0}
+
+lineLenght = 0
+working = 0
+lines = 0
+
+jobAvailable = true
+managerId = -1
+
+yMin = yCoord
+
+id = -1
+
+function save()
+	h = fs.open("config", "w")
+	h.writeLine(tostring(xHome))
+	h.writeLine(tostring(yHome))
+	h.writeLine(tostring(zHome))
+	h.writeLine(tostring(orientation))
+	h.writeLine(tostring(xQuarry))
+	h.writeLine(tostring(yProgress))
+	h.writeLine(tostring(zQuarry))
+	h.writeLine(tostring(working))
+	h.flush()
+	h.close()
+end
+
+function load()
+	h = fs.open("config", "r")
+	a = h.readLine()
+	xHome = tonumber(a)
+	a = h.readLine()
+	yHome = tonumber(a)
+	a = h.readLine()
+	zHome = tonumber(a)
+	a = h.readLine()
+	orientation = tonumber(a)
+	a = h.readLine()
+	xQuarry = tonumber(a)
+	a = h.readLine()
+	yProgress = tonumber(a)
+	a = h.readLine()
+	zQuarry = tonumber(a)
+	a = h.readLine()
+	working = tonumber(a)
+	h.close()
+end
+
+function inventoryFull()
+	turtle.select(16)
+	full = turtle.getItemCount(16) > 0
+	turtle.select(1)
+	return full
+end
+
+function left()
+	orientation = orientation - 1
+	orientation = (orientation - 1) % 4
+	orientation = orientation + 1
+	turtle.turnLeft()
+end
+
+function right()
+	orientation = orientation - 1
+	orientation = (orientation + 1) % 4
+	orientation = orientation + 1
+	turtle.turnRight()
+end
+
+function moveForward()
+	xCoord = xCoord + xDiff[orientation]
+	zCoord = zCoord + zDiff[orientation]
+	moved = false
+	while not(moved) do
+		turtle.dig()
+		moved = turtle.forward()
+	end
+end
+
+function moveUp()
+	yCoord = yCoord + 1
+	moved = false
+	while not(moved) do
+		turtle.digUp()
+		moved = turtle.up()
+	end
+end
+
+function moveDown()
+	yCoord = yCoord - 1
+	moved = false
+	while not(moved) do
+		turtle.digDown()
+		moved = turtle.down()
+	end
+	if yMin > yCoord then
+		yMin = yCoord
+	end
+end
+
+function setOrientation()
+	turtle.forward()
+	xCur, yCur, zCur = gps.locate()
+	if xCur < xCoord then
+		orientation = 4
+	elseif xCur > xCoord then
+		orientation = 2
+	elseif zCur < zCoord then
+		orientation = 1
+	elseif zCur > zCoord then
+		orientation = 3
+	end
+	turtle.back()
+end
+
+function look(direction)
+	while direction ~= orientations[orientation] do
+		right()
+	end
+end
+
+function goto(xTarget, yTarget, zTarget)
+	while yCoord < yTarget do
+		moveUp()
+	end
+	while yCoord > yTarget do
+		moveDown()
+	end
+	if xTarget < xCoord then
+		look("west")
+		while xTarget < xCoord do
+			moveForward()
+		end
+	end
+	if xTarget > xCoord then
+		look("east")
+		while xTarget > xCoord do
+			moveForward()
+		end
+	end
+	if zTarget > zCoord then
+		look("south")
+		while zTarget > zCoord do
+			moveForward()
+		end
+	end
+	if zTarget < zCoord then
+		look("north")
+		while zTarget < zCoord do
+			moveForward()
+		end
+	end
+end
+
+function returnItems()
+	xProgress = xCoord
+	yProgress = yCoord
+	zProgress = zCoord
+	oProgress = orientation
+	goto(xHome, yTravel, zHome)
+	goto(xHome, yHome, zHome)
+	for i = 1, 16 do
+		turtle.select(i)
+		turtle.dropDown()
+	end
+	turtle.select(1)
+	goto(xProgress, yTravel, zProgress)
+	goto(xProgress, yProgress, zProgress)
+	look(orientations[oProgress])
+end
+
+function digLine()
+	for i = 1, lineLenght-1 do
+	if inventoryFull() then
+		returnItems()
+	end
+		moveForward()
+	end
+end
+
+function digLayer()
+	for i = 1, lines do
+		digLine()
+		if i % 2 == 1 and i < lines then
+			left()
+			moveForward()
+			left()
+		elseif i < lines then
+			right()
+			moveForward()
+			right()
+		end
+	end
+	goto(xQuarry, yCoord, zQuarry)
+	look("north")
+	moveDown()
+end
+
+function digQuarry(xTarget, yTarget, zTarget)
+	xQuarry = xTarget
+	yQuarry = yTarget
+	zQuarry = zTarget
+	if inventoryFull then
+		returnItems()
+	end
+	goto(xQuarry, yTravel, zQuarry)
+	goto(xQuarry, yQuarry, zQuarry)
+	look("north")
+	while yMin > 6 do
+		digLayer()
+	end
+	goto(xQuarry, yQuarry, zQuarry)
+	goto(xHome, yHome, zTravel)
+	goto(xHome, yHome, zHome)
+	yMin = 999
+end
+
+function getJob()
+	while jobAvailable do
+		rednet.broadcast(os.getComputerLabel())
+		while id == -1 do
+			id, msg, dis = rednet.receive()
+		end
+		if msg == "yes" then
+			id, xQuarry, dis = rednet.receive()
+			id, yQuarry, dis = rednet.receive()
+			id, zQuarry, dis = rednet.receive()
+			id, qDist, dis = rednet.receive()
+			rednet.send(id, "ok")
+			lineLenght = tonumber(qDist) - 1
+			lines = tonumber(qDist) - 1
+			working = 1
+			print("got job")
+			digQuarry(tonumber(xQuarry), tonumber(yQuarry), tonumber(zQuarry))
+			working = 0
+		elseif msg == "no" then
+			jobAvailable = false
+			canWork = 0
+		end
+		id = -1
+	end
+end
+
+rednet.open("right")
+if fs.exists("config") then
+	load()
+	print("Loaded!")
+else
+	print("Not loaded")
+end
+if orientation == -1 then
+	setOrientation()
+	print("orientation set")
+else
+	print("Had orientation")
+end
+if working == 1 then
+	print("going to work")
+	digQuarry(xQuarry, yProgress, zQuary)
+else
+	print("need a job")
+end
+getJob()
